@@ -1,0 +1,36 @@
+#!/bin/bash
+
+
+
+while getopts h:i: flag
+do
+    case "${flag}" in
+        h) host=${OPTARG};;
+        i) interface=${OPTARG};;
+    esac
+done
+
+echo "host: $host";
+echo "interface: $interface";
+
+NODE=$host
+INTERFACE=$interface
+
+cmd_in_host() {
+    oc debug node/$NODE -- chroot /host $@
+}
+
+cmd_in_toolbox() {
+    oc debug node/$NODE -- $@
+}
+
+
+echo ""
+
+FILENAME="/host/var/tmp/${NODE}_${INTERFACE}_$(date +%d_%m_%Y-%H_%M_%S-%Z).pcap"
+echo "pcap for interface ${INTERFACE} of node ${NODE} in ${FILENAME}"
+echo ""
+
+cmd_in_toolbox tcpdump -nn -s 0 -i $INTERFACE -w $FILENAME 
+
+

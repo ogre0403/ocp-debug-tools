@@ -1,0 +1,71 @@
+#!/bin/bash
+
+
+
+while getopts t:p:n:h:i: flag
+do
+    case "${flag}" in
+        t) type=${OPTARG};;
+        p) pod=${OPTARG};;
+        n) namespace=${OPTARG};;
+        h) host=${OPTARG};;
+        i) interface=${OPTARG};;
+    esac
+done
+echo "type: $type";
+echo "pod: $pod";
+echo "ns: $namespace";
+echo "host: $host";
+echo "interface: $interface";
+
+
+
+cmd_in_host() {
+    oc debug node/$NODE -- chroot /host $@
+}
+
+cmd_in_toolbox() {
+    oc debug node/$NODE -- $@
+}
+
+
+# https://openshift.ktz.cloud/troubleshooting/collect-tcpdump/
+# https://access.redhat.com/solutions/5074041
+# https://access.redhat.com/solutions/4569211
+
+tcpdump_pod(){
+
+    CID=`oc get pods -n $TRACE_NS $TRACE_POD --template '{{printf "%.21s" (index .status.containerStatuses 0).containerID}}{{"\n"}}' | sed -e 's|cri-o://||'`
+    PID=$(cmd_in_host crictl inspect -o yaml $CID | grep 'pid:' | awk '{print $2}')
+    #cmd_in_toolbox nsenter -n -t $PID -- tcpdump -nn port 53 | tee tcpdump.log
+    cmd_in_toolbox nsenter -n -t $PID -- tcpdump -nn 
+} 
+
+tcpdump_host(){
+    FILENAME="/host/var/tmp/${NODE}_${INTERFACE}_$(date +%d_%m_%Y-%H_%M_%S-%Z).pcap"
+    cmd_in_toolbox tcpdump -nn -s 0 -i $INTERFACE -w $FILENAME 
+}
+
+
+
+case $type in
+  node)
+    echo -n "node"
+    NODE=$host
+    INTERFACE=$interface
+    tcpdump_host
+    ;;
+
+  pod)
+    echo -n "pod"
+    TRACE_NS=$namespace
+    TRACE_POD=$pod
+    # find node where pod exist
+    NODE=`oc get pod -n $TRACE_NS $TRACE_POD -o=jsonpath='{.spec.nodeName}'`
+    tcpdump_pod
+    ;;
+  *)
+    echo -n "unsupport tcpdump type, noly support node & pod"
+    exit -1
+    ;;
+esac

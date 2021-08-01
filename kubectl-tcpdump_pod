@@ -1,0 +1,44 @@
+#!/bin/bash
+
+
+while getopts p:n: flag
+do
+    case "${flag}" in
+        p) pod=${OPTARG};;
+        n) namespace=${OPTARG};;
+    esac
+done
+
+echo "pod: $pod";
+echo "ns: $namespace";
+
+
+
+
+
+cmd_in_host() {
+    oc debug node/$NODE -- chroot /host $@
+}
+
+cmd_in_toolbox() {
+    oc debug node/$NODE -- $@
+}
+
+TRACE_NS=$namespace
+TRACE_POD=$pod
+# find node where pod exist
+NODE=`oc get pod -n $TRACE_NS $TRACE_POD -o=jsonpath='{.spec.nodeName}'`
+
+
+
+
+CID=`oc get pods -n $TRACE_NS $TRACE_POD --template '{{printf "%.21s" (index .status.containerStatuses 0).containerID}}{{"\n"}}' | sed -e 's|cri-o://||'`
+PID=$(cmd_in_host crictl inspect -o yaml $CID | grep 'pid:' | awk '{print $2}')
+
+
+FILENAME="/host/var/tmp/${TRACE_NS}_${TRACE_POD}_$(date +%d_%m_%Y-%H_%M_%S-%Z).pcap"
+echo "pcap for pod ${TRACE_NS}/${TRACE_POD} in ${FILENAME}"
+echo ""
+cmd_in_toolbox nsenter -n -t $PID -- tcpdump -nn -s 0 -w $FILENAME 
+
+
