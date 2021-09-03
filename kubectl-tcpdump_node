@@ -1,27 +1,32 @@
 #!/bin/bash
 
 
-
-while getopts h:i: flag
+to_namespace=`oc ns -c`
+while getopts h:i:t: flag
 do
     case "${flag}" in
         h) host=${OPTARG};;
         i) interface=${OPTARG};;
+        t) to_namespace=${OPTARG};;
     esac
 done
 
 echo "host: $host";
 echo "interface: $interface";
+echo "to_namespace: $to_namespace";
+
 
 NODE=$host
 INTERFACE=$interface
+TO_NAMESPACE=$to_namespace
+
 
 cmd_in_host() {
-    oc debug node/$NODE -- chroot /host $@
+    oc debug node/$NODE -n $TO_NAMESPACE -- chroot /host $@
 }
 
 cmd_in_toolbox() {
-    oc debug node/$NODE -- $@
+    oc debug node/$NODE -n $TO_NAMESPACE -- $@
 }
 
 

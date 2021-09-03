@@ -1,35 +1,36 @@
 #!/bin/bash
 
-
-while getopts p:n: flag
+to_namespace=`oc ns -c`
+while getopts p:n:t: flag
 do
     case "${flag}" in
         p) pod=${OPTARG};;
         n) namespace=${OPTARG};;
+        t) to_namespace=${OPTARG};;
     esac
 done
 
 echo "pod: $pod";
 echo "ns: $namespace";
+echo "to_namespace: $to_namespace";
 
-
-
-
-
-cmd_in_host() {
-    oc debug node/$NODE -- chroot /host $@
-}
-
-cmd_in_toolbox() {
-    oc debug node/$NODE -- $@
-}
 
 TRACE_NS=$namespace
 TRACE_POD=$pod
+TO_NAMESPACE=$to_namespace
+
+
+cmd_in_host() {
+    oc debug node/$NODE -n $TO_NAMESPACE -- chroot /host $@
+}
+
+cmd_in_toolbox() {
+    oc debug node/$NODE -n $TO_NAMESPACE -- $@
+}
+
+
 # find node where pod exist
 NODE=`oc get pod -n $TRACE_NS $TRACE_POD -o=jsonpath='{.spec.nodeName}'`
-
-
 
 
 CID=`oc get pods -n $TRACE_NS $TRACE_POD --template '{{printf "%.21s" (index .status.containerStatuses 0).containerID}}{{"\n"}}' | sed -e 's|cri-o://||'`

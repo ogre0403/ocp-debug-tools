@@ -14,7 +14,7 @@ Copy `kubectl-tcpdump_node` & `kubectl-tcpdump_pod` into $PATH.
 
 * TCPDUMP for node interface
     ```
-    $ oc tcpdump-node -h <NODE> -i <INTERFACE>
+    $ oc tcpdump-node -h <NODE> -i <INTERFACE> [ -t <TO-NAMESAPCE> ]
     ```
     If pods are located on `different` node, capture primary interface packet can get useful information. 
 
@@ -23,7 +23,7 @@ Copy `kubectl-tcpdump_node` & `kubectl-tcpdump_pod` into $PATH.
 * TCPDUMP for Pod
 
     ```
-    $ oc tcpdump-pod -n <NAMESPACE> -p <POD>
+    $ oc tcpdump-pod -n <NAMESPACE> -p <POD>  [ -t <TO-NAMESAPCE> ]
     ```
 
 
